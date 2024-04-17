@@ -1,3 +1,4 @@
+tic
 % Create Scene with Collision-Object-Based Static Meshes
 scenario = robotScenario(UpdateRate=10);
 % Floor
@@ -54,6 +55,7 @@ planner = manipulatorRRT(robot.RigidBodyTree,scenario.CollisionMeshes);
 planner.MaxConnectionDistance = 0.1;
 planner.ValidationDistance = 0.1;
 planner.SkippedSelfCollisions = "parent";
+planner.EnableConnectHeuristic = true;
 % Specify a pick-up joint configuration for the manipulator based on the target box location.
 pickUpConfig = [0.2371 -0.1000 0.0542 -2.2272 0.0013 2.2072 -0.9670 0.0400 0.0400];
 % Plan a path as a series of waypoints and interpolate between the waypoints to visualize the intermediate configurations of the planned motion.
@@ -67,9 +69,11 @@ interpStates = interpolate(planner,shortenpath,numState);
 show3D(scenario,FastUpdate=true,Parent=ax,Visuals=visuals,Collisions=collisions);
 title("Approaching towards pick-up location")
 % Move the manipulator based on the planned state, and visualize each state in the scenario.
+iterationCount1 = 0; % Initialize iteration count
 for idx = 1:size(interpStates,1)
     % Get current joint configuration.
     jointConfig = interpStates(idx,:);
+    iterationCount1 = iterationCount1 + 1; % Increment iteration count
 
     % Move manipulator with current joint configuration.
     move(robot,"joint",jointConfig)
@@ -88,7 +92,6 @@ for idx = 1:size(interpStates,1)
     advance(scenario);
 end
 
-
 % Pick Up Target Box with Manipulator Gripper
 % Attach the target box to the rigidBodyTree of the manipulator by using a transform to simulate the pick-up action.
 attach(robot,"Box",endEffectorName,ChildToParentTransform=trvec2tform([0.0 0.0 0.1]))
@@ -98,11 +101,12 @@ title("Picked-up target box")
 
 
 % Plan Manipulator Motion Between Pick-Up and Drop Locations
-dropConfig = [-0.6564 0.2885 -0.3187 -1.5941 0.1103 1.8678 -0.2344 0.04 0.04];
+dropConfig = [-0.6564 0.2885 -0.3187 -1.5941 0.1103 1.8678 -0.2344 0.0400 0.0400];
 planner = manipulatorRRT(robot.RigidBodyTree,scenario.CollisionMeshes);
 planner.MaxConnectionDistance = 0.1;
 planner.ValidationDistance = 0.1;
 planner.SkippedSelfCollisions = "parent";
+planner.EnableConnectHeuristic = true;
 % Plan a path as a series of waypoints and interpolate between the waypoints to visualize the intermediate configurations of the planned motion.
 path = plan(planner,pickUpConfig,dropConfig);
 shortenpath = shorten(planner,path,20);
@@ -111,9 +115,12 @@ interpStates = interpolate(planner,shortenpath,numState);
 show3D(scenario,FastUpdate=true,Parent=ax,Visuals=visuals,Collisions=collisions);
 title("Approaching towards drop location")
 % Move the manipulator based on the planned state, and visualize each state in the scenario.
+iterationCount2 = 0; % Initialize iteration count
 for idx = 1:size(interpStates,1)
     % Get current joint configuration.
     jointConfig = interpStates(idx,:);
+    iterationCount2 = iterationCount2 + 1; % Increment iteration count
+
 
     % Move manipulator with current joint configuration.
     move(robot,"joint",jointConfig)
@@ -144,6 +151,7 @@ planner = manipulatorRRT(robot.RigidBodyTree,scenario.CollisionMeshes);
 planner.MaxConnectionDistance = 0.1;
 planner.ValidationDistance = 0.1;
 planner.SkippedSelfCollisions = "parent";
+planner.EnableConnectHeuristic = true;
 % Plan a path as a series of waypoints and interpolate between the waypoints to visualize the intermediate configurations of the planned motion.
 path = plan(planner,dropConfig,initialConfig);
 shortenpath = shorten(planner,path,20);
@@ -152,9 +160,11 @@ interpStates = interpolate(planner,shortenpath,numState);
 show3D(scenario,FastUpdate=true,Parent=ax,Visuals=visuals,Collisions=collisions);
 title("Approaching towards home configuration")
 % Move the manipulator based on the planned state, and visualize each state in the scenario.
+iterationCount3 = 0; % Initialize iteration count
 for idx = 1:size(interpStates,1)
     % Get current joint configuration.
     jointConfig = interpStates(idx,:);
+    iterationCount3 = iterationCount3 + 1; % Increment iteration count
 
     % Move manipulator with current joint configuration.
     move(robot,"joint",jointConfig)
@@ -172,3 +182,15 @@ for idx = 1:size(interpStates,1)
     % Advance scenario simulation time.
     advance(scenario);
 end
+toc
+
+% Print iteration count
+fprintf('Iterations to find pick-up location: %d\n', iterationCount1);
+fprintf('Iterations to find drop-off location: %d\n', iterationCount2);
+fprintf('Iterations to find home location: %d\n', iterationCount3);
+iterationCount = iterationCount1 + iterationCount2 + iterationCount3;
+fprintf('Total Iterations: %d\n', iterationCount);
+disp(iterationCount1);
+disp(iterationCount2);
+disp(iterationCount3);
+disp(iterationCount);
