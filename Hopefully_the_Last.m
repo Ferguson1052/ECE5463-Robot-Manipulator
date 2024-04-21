@@ -5,7 +5,7 @@ clc
 %% Environment Initialization:
 
 
-scenario = robotScenario(UpdateRate=100);
+scenario = robotScenario(UpdateRate=1000);
 
 % Floor
 addMesh(scenario,"Box",Position=[0.35 -0.15 -0.0251],Size=[1.3 1.3 0.05],Color=[0.7 0.5 0.5],Collision="mesh")
@@ -46,18 +46,24 @@ move(robo,"joint",config')
 rng default
 weights = [0.3 0.3 0.3 1 1 1]; 
 
-% Add Box for Manipulation ( Want it to connect to the End Effector)
+%% Add Box for Manipulation ( Want it to connect to the End Effector)
+
+Payload = robotPlatform("Payload",scenario,Collision="mesh",InitialBasePosition=[0.775 0.1 0.175]);
+updateMesh(Payload,"Cuboid",Collision="mesh",Size=[0.06 0.06 0.1],Color=[0.875 0.0 0.0]);
+
 Box = rigidBody('BoxToMove');
-addVisual(Box,"Box",[0.06 0.06 0.1],[eye(3),[0 0 -0.1]'; 0 0 0 1]);
-boxToMove = robotPlatform("Box",scenario,Collision="mesh",InitialBasePosition=[0.775 0.1 0.175]);
-%Update the properties of the movable mesh.
-updateMesh(boxToMove,"Cuboid",Collision="mesh",Size=[0.06 0.06 0.1],Color=[0.875 0.0 0.0]);
+addCollision(Box,"box",[0.06 0.06 0.1],[eye(3),[0 0 0.1]'; 0 0 0 1]);
+addVisual(Box,"Box",[0.06 0.06 0.1],[eye(3),[0 0 0.1]'; 0 0 0 1]);
+Payload_jnt = rigidBodyJoint('Payload_jnt','fixed');
+setFixedTransform(Payload_jnt,[0 0 .1 0 ],'dh');
+Box.Joint = Payload_jnt;
+
+
 
 ax = show3D(scenario,Visuals=visuals,Collisions=collisions);
 view(60, 15)
 title("Scene with static meshes and robot platform")
 light
-
 %% Robot Parameters
 
 planner = manipulatorRRT(robot,scenario.CollisionMeshes);
@@ -114,7 +120,9 @@ for idx = 1:size(q1,1)
 end
 
 addBody(robot,Box,'panda_hand')
-attach(robo,"Box",'panda_hand',ChildToParentTransform=trvec2tform([0.0 0.0 -0.1]))
+attach(robo,"Payload","panda_hand","ChildToParentTransform",trvec2tform([0.0 0.0 0.1]))
+updateMesh(Payload,"Cuboid",Collision="mesh",Size=[0.06 0.06 0.1],Color=[0.875 0.0 0.0]);
+
 show3D(scenario,FastUpdate=true,Parent=ax,Visuals=visuals,Collisions=collisions);
 title("Picked-up target box")
 
@@ -122,13 +130,13 @@ title("Picked-up target box")
 
 Guess2 = [-0.6564 0.2885 -0.3187 -1.5941 0.1103 1.8678 -0.2344 0.04 0.04]';
 % Specify a pick-up joint configuration for the manipulator based on the target box location.
-dropOffConfig = [0.05 -0.6 0.4665]';
+dropOffConfig = [0.05 -0.6 0.3665]';
 dropOffRot = [  1    0   0
                0    -1   0
                0    0   -1 ];
-pickupT = [dropOffRot dropOffConfig; 0 0 0 1];
+dropOffT = [dropOffRot dropOffConfig; 0 0 0 1];
 ik = inverseKinematics('RigidBodyTree',robot);
-[Goal2,SolInfo2] = ik('panda_hand',pickupT,weights,Guess2);
+[Goal2,SolInfo2] = ik('BoxToMove',dropOffT,weights,Guess2);
 path2 = plan(planner,Goal1',Goal2');
 q2 = interpolate(planner,path2,numState);
 
@@ -197,7 +205,7 @@ T = 0:tEnd/(length(q)):tEnd;
 Tmod = T(1:length(q));
 
 figure (2)
-plot(Tmod,q(:,1)',Tmod,q(:,2)',Tmod,q(:,3)',Tmod,q(:,4)',Tmod,q(:,5)',Tmod,q(:,6)',Tmod,q(:,7)',Tmod,q(:,8)')
+plot(Tmod,q(:,1)',Tmod,q(:,2)',Tmod,q(:,3)',Tmod,q(:,4)',Tmod,q(:,5)',Tmod,q(:,6)',Tmod,q(:,7)',Tmod,q(:,8)',Tmod,q(:,9)')
 title('Joint Angles')
 xlabel('Time (seconds)')
 ylabel('Angle (radians)')
