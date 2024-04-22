@@ -1,7 +1,8 @@
+%% Environemnt Initialization
 % Load Robot
 %robot = loadrobot("frankaEmikaPanda",DataFormat="column");
-robot = loadrobot('kinovaGen3', 'DataFormat', 'column');
-
+robot = loadrobot('kinovaGen3', 'DataFormat', 'column', Gravity=[0 0 -9.81]);
+showdetails(robot)
 
 numJoints = numel(homeConfiguration(robot));
 
@@ -115,7 +116,6 @@ targetStates = [positions;velocities;accelerations]';
 
 
 helperFinalVisualizerKINOVA;
-view(0,0)
 
 %visuals = "on";
 %collisions = "on";
@@ -235,3 +235,38 @@ title('Joint Acceleration with Best-Fit Curves');
 grid on;
 legend(arrayfun(@(x) ['Joint ' num2str(x)], 1:numJoints, 'UniformOutput', false));
 hold off;
+
+
+% Calculate joint torques
+jointTorques = jointTorq(robot, positions, velocities, accelerations);
+
+% Plot joint torques
+figure;
+plot(timestamp, jointTorques, 'LineWidth', 1.5);
+xlabel('Time (s)');
+ylabel('Joint Torque (Nm)');
+title('Joint Torques Over Time');
+grid on;
+legend(arrayfun(@(x) ['Joint ' num2str(x)], 1:size(jointTorques, 1), 'UniformOutput', false));
+
+
+function jointTorques = jointTorq(robot, positions, velocities, accelerations)
+    % Initialize output matrix for joint torques
+    numJoints = size(positions, 1);
+    numTimeSteps = size(positions, 2);
+    jointTorques = zeros(numJoints, numTimeSteps);
+    
+    % Loop through each time step to compute joint torques
+    for t = 1:numTimeSteps
+        % Get joint configurations
+        jointConfig = positions(:, t);
+        jointVelocity = velocities(:, t);
+        jointAcceleration = accelerations(:, t);
+
+        % Compute joint torques using inverse dynamics
+        torques = inverseDynamics(robot, jointConfig, jointVelocity, jointAcceleration);
+
+        % Store joint torques in the output matrix
+        jointTorques(:, t) = torques;
+    end
+end
